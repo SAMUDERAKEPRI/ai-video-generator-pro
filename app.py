@@ -32,15 +32,15 @@ if st.button("Generate Video Sekarang"):
             os.environ["REPLICATE_API_TOKEN"] = replicate_api
             
             with st.status("Sedang memproses video... Mohon tunggu.", expanded=True) as status:
-                st.write("Menghubungkan ke server AI...")
+                st.write("Menghubungkan ke model AI (Stable Video Diffusion)...")
                 
-                # PERBAIKAN: Menggunakan model 'stability-ai/svd' versi terbaru yang aktif
-                # Ini adalah ID versi yang paling stabil saat ini
-                model_version = "stability-ai/svd:3f04571b066757116e39748fa091919864205574f8845e2da04b338ba4a3b7d1"
+                # --- SOLUSI FIX 422: MEMANGGIL MODEL TANPA ID VERSI PANJANG ---
+                # Ini akan otomatis mengambil versi terbaru yang diizinkan
+                model = replicate.models.get("stability-ai/svd")
+                version = model.versions.list()[0] # Mengambil versi paling atas (terbaru)
                 
-                # Eksekusi Model
                 output = replicate.run(
-                    model_version,
+                    f"{model.owner}/{model.name}:{version.id}",
                     input={
                         "input_image": uploaded_file,
                         "video_length": "14_frames_with_svd",
@@ -54,7 +54,6 @@ if st.button("Generate Video Sekarang"):
             
             # Tampilkan Hasil Video
             if output:
-                # Jika output berupa list, ambil yang pertama
                 video_url = output[0] if isinstance(output, list) else output
                 st.video(video_url)
                 st.success("Video berhasil dibuat untuk SamuderaKepriTV!")
@@ -62,14 +61,10 @@ if st.button("Generate Video Sekarang"):
                 
         except Exception as e:
             error_msg = str(e)
-            if "404" in error_msg:
-                st.error("Error 404: Alamat model tidak ditemukan. Saya akan coba gunakan metode alternatif...")
-                # Metode Cadangan (Tanpa ID Versi)
-                try:
-                    output = replicate.run("stability-ai/svd", input={"input_image": uploaded_file})
-                    st.video(output[0])
-                except:
-                    st.error("Gagal terhubung. Pastikan akun Replicate Bapak sudah aktif.")
+            if "422" in error_msg:
+                st.error("Izin Ditolak: Bapak perlu membuka https://replicate.com/stability-ai/svd di browser, lalu klik 'Run' sekali saja untuk menyetujui syarat penggunaan (Terms).")
+            elif "401" in error_msg:
+                st.error("Token API tidak valid. Pastikan r8_... sudah benar.")
             else:
                 st.error(f"Terjadi kesalahan teknis: {error_msg}")
 
